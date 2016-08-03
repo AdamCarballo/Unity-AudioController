@@ -1,9 +1,9 @@
 ﻿/*
  * EC_AudioController.cs
- * #DESCRIPTION#
+ * 2D Audio Groups and Audio Clips holder. Can be called with EC_AudioController.Play(groupName, interrupt(optional)).
  * 
  * by Adam Carballo under GPLv3 license.
- * https://github.com/engyne09/LINK
+ * https://github.com/engyne09/Unity-AudioController
  */
 
 using System.Collections.Generic;
@@ -46,16 +46,24 @@ public class EC_AudioController : MonoBehaviour {
     }
 
     public AudioGroup[] audioGroup;
+    private Transform parentHolder;
 
 
-    void Update() {
+    void Start() {
 
-        if (Input.GetKeyDown(KeyCode.T)) {
-            Play("Test");
+        GameObject audioHolder = GameObject.FindGameObjectWithTag("AudioHolder");
+
+        if (!audioHolder) {
+            audioHolder = new GameObject("[AudioHolder]");
+            audioHolder.tag = "AudioHolder";
         }
+
+        parentHolder = audioHolder.transform;
     }
 
-    public void Play(string group, bool interrupt = false) {
+    public void Play(string group, bool loop = false, bool interrupt = false) {
+
+		//Debug.Log ("Playing sound " + group + " on GameObject + " + this.gameObject.name + ".");
 
         AudioGroup tempGroup = null;
 
@@ -66,7 +74,7 @@ public class EC_AudioController : MonoBehaviour {
             }
         }
         if (tempGroup == null) {
-            Debug.LogError("Audio Group: " + '"' + group + '"' + " namespace not found. Check if it's correctly spelled or created.");
+			Debug.LogError("Audio Group: " + '"' + group + '"' + " namespace not found. Check if it's correctly spelled or created. Offending gameObject: " + gameObject.name);
             return;
         }
 
@@ -83,15 +91,26 @@ public class EC_AudioController : MonoBehaviour {
             return;
         }
 
-        GenerateSource(tempGroup.clips[clipsId[Random.Range(0, clipsId.Count)]], tempGroup.priority, tempGroup.mixGroup);
+        GenerateSource(group, tempGroup.clips[clipsId[Random.Range(0, clipsId.Count)]], tempGroup.priority, tempGroup.mixGroup, loop, interrupt);
     }
 
-    private void GenerateSource(AudioTrack track, int priority, AudioMixerGroup mixer) {
+    private void GenerateSource(string group, AudioTrack track, int priority, AudioMixerGroup mixer, bool loop, bool interrupt) {
+
+        // Stop all the other sounds
+        if (interrupt) {
+            int children = parentHolder.childCount;
+
+            for (int i = 0; i < children; ++i) {
+                parentHolder.transform.GetChild(i).GetComponent<AudioSource>().Stop();
+                Destroy(parentHolder.transform.GetChild(i).gameObject);
+            }
+        }
 
         GameObject tempObj = new GameObject("Temporal AudioSource");
-        tempObj.transform.SetParent(transform, true);
+        tempObj.transform.SetParent(parentHolder, true);
         AudioSource source = tempObj.AddComponent<AudioSource>();
         EC_AudioTemporalSource tempAudio = tempObj.AddComponent<EC_AudioTemporalSource>();
+        tempAudio.groupName = group;
 
         source.volume = track.volume.GetRandomValue();
         source.pitch = track.pitch.GetRandomValue();
@@ -100,7 +119,29 @@ public class EC_AudioController : MonoBehaviour {
             source.outputAudioMixerGroup = mixer;
         }
 
-        source.PlayOneShot(track.clip);
-        tempAudio.StartInvoke(track.clip.length);
+		source.clip = track.clip;
+
+        if (loop) {
+            source.loop = true;
+			source.Play();
+        } else {
+			source.Play();
+            tempAudio.StartInvoke(track.clip.length);
+        }
+    }
+
+    public void Stop(string group) {
+
+        int children = parentHolder.childCount;
+
+        for (int i = 0; i < children; ++i) {
+
+            Transform child = parentHolder.transform.GetChild(i);
+
+            if (child.GetComponent<EC_AudioTemporalSource>().groupName == group) {
+                child.GetComponent<AudioSource>().Stop();
+				Destroy(child.gameObject);
+            }
+        }
     }
 }
