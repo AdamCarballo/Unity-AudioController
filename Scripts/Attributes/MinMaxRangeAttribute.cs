@@ -1,27 +1,26 @@
-﻿/* MinMaxRangeAttribute.cs
-* by Eddie Cameron – For the public domain
-* —————————-
-* Use a MinMaxRange class to replace twin float range values (eg: float minSpeed, maxSpeed; becomes MinMaxRange speed)
-* Apply a [MinMaxRange( minLimit, maxLimit )] attribute to a MinMaxRange instance to control the limits and to show a
-* slider in the inspector
-*/
-
+﻿using System;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class MinMaxRangeAttribute : PropertyAttribute {
-    public float minLimit, maxLimit;
+    public float MinLimit { get; set; }
+    public float MaxLimit { get; set; }
 
     public MinMaxRangeAttribute(float minLimit, float maxLimit) {
-        this.minLimit = minLimit;
-        this.maxLimit = maxLimit;
+        MinLimit = minLimit;
+        MaxLimit = maxLimit;
     }
 }
 
-[System.Serializable]
-public class MinMaxRange {
-    public float rangeStart, rangeEnd;
+[Serializable]
+public struct MinMaxRange {
+    [SerializeField]
+    private float _rangeStart;
+    
+    [SerializeField]
+    private float _rangeEnd;
 
     public float GetRandomValue() {
-        return Random.Range(rangeStart, rangeEnd);
+        return Random.Range(_rangeStart, _rangeEnd);
     }
 }
